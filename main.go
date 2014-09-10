@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 	"os"
-    "os/signal"
+  "os/signal"
 	"syscall"
 
 	"code.google.com/p/go.net/websocket"
@@ -35,12 +35,12 @@ type NV_Event struct {
     ServerID    string
     Timestamp   time.Time
     ARI_Event   string
-    
 }
 
 func init() {
-    var err error
-    // parse the configuration file and get data from it
+  var err error
+  
+  // parse the configuration file and get data from it
 	configpath := flag.String("config", "./config.json", "Path to config file")
 	flag.Parse()
 	configfile, err := ioutil.ReadFile(*configpath)
@@ -53,7 +53,8 @@ func init() {
 }
 
 func ProcessMessage(ariMessage,ariApplication string, p *nsq.Producer) {
-    message := NV_Event{ServerID:config.ServerID, Timestamp:time.Now(),ARI_Event:ariMessage}
+  fmt.Printf("[DEBUG] Got ARI Message:\n%s", ariMessage)
+  message := NV_Event{ServerID:config.ServerID, Timestamp:time.Now(),ARI_Event:ariMessage}
 
 	busMessage, err := json.Marshal(message)
 	if err != nil {
@@ -91,11 +92,11 @@ func CreateWS(s string) {
 }
 
 func signalCatcher() {
-        ch := make(chan os.Signal)
-        signal.Notify(ch, syscall.SIGINT)
-        sig := <-ch
-        log.Printf("Signal received: %v", sig)
-        os.Exit(0)
+  ch := make(chan os.Signal)
+  signal.Notify(ch, syscall.SIGINT)
+  sig := <-ch
+  log.Printf("Signal received: %v", sig)
+  os.Exit(0)
 }
 
 func main() {
@@ -105,5 +106,4 @@ func main() {
 	
 	go signalCatcher()
     select {}
-
 }
