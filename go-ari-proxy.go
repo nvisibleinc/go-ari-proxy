@@ -53,7 +53,7 @@ func init() {
 	json.Unmarshal(configfile, &config)
 }
 
-func ProcessMessage(ariMessage,ariApplication string, p *nsq.Producer) {
+func PublishMessage(ariMessage,ariApplication string, p *nsq.Producer) {
   var message NV_Event
   json.Unmarshal([]byte(ariMessage), &message)
   message.ServerID = config.ServerID
@@ -66,6 +66,10 @@ func ProcessMessage(ariMessage,ariApplication string, p *nsq.Producer) {
 	}
   fmt.Printf("[DEBUG] Bus Data:\n%s", busMessage)
 	p.Publish(ariApplication, []byte(busMessage))
+}
+
+func ConsumeCommand() {
+  
 }
 
 func CreateWS(s string) {
@@ -91,7 +95,7 @@ func CreateWS(s string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		go ProcessMessage(ariMessage, s, producer)
+		go PublishMessage(ariMessage, s, producer)
 	}
 }
 
