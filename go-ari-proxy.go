@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"net/http"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"bytes"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,6 +21,7 @@ import (
 // Var config contains a Config struct to hold the proxy configuration file.
 var (
 	config Config
+	client = &http.Client{}
 )
 
 // Struct Config holds the configuration for the proxy.
@@ -29,6 +32,7 @@ type Config struct {
 	ServerID      string      `json:"server_id"`	// unique server ident
 	Applications  []string    `json:"applications"`	// slice of applications to listen for
 	Websocket_URL string      `json:"websocket_url"`// websocket to connect to
+	Stasis_URL    string      `json:"stasis_url"`   // Base URL of ARI REST API
 	WS_User       string      `json:"ws_user"`		// username of websocket connection
 	WS_Password   string      `json:"ws_password"`	// pass of websocket connection
 	MessageBus    string      `json:"message_bus"`	// type of message bus to publish to
@@ -81,8 +85,8 @@ func ConsumeCommand() {
 
 }
 
-// CreateWS sets up a websocket connection to an ARI application.
-func CreateWS(s string, producer chan []byte) {
+// runEventHandler sets up a websocket connection to an ARI application.
+func runEventHandler(s string, producer chan []byte) {
 	// Connect to the websocket backend (ARI)
 	var ariMessage string
 	url := strings.Join([]string{config.Websocket_URL, "?app=", s, "&api_key=", config.WS_User, ":", config.WS_Password}, "")
@@ -91,7 +95,8 @@ func CreateWS(s string, producer chan []byte) {
 		log.Fatal(err)
 	}
 
-	// Start the producer loop. Every message received from the websocket is passed to the PublishMessage() function.
+	// Start the producer loop. Every message received from the websocket is
+	// passed to the PublishMessage() function.
 	for {
 		err = websocket.Message.Receive(ws, &ariMessage)		// accept the message from the websocket
 		if err != nil {
@@ -101,6 +106,37 @@ func CreateWS(s string, producer chan []byte) {
 	}
 }
 
+// runCommandConsumer starts the consumer for accepting Commands from
+// applications.
+func runCommandConsumer(app string) {
+	consumer := ari.InitConsumer(strings.Join([]string{app, "commands"},"_"), config.MessageBus, config.BusConfig)
+	responseProducer := ari.InitProducer(strings.Join([]string{app, "responses"},"_"), config.MessageBus, config.BusConfig)
+	for jsonCommand := range consumer {
+		fmt.Printf("runCommandConsumer: %s\n", jsonCommand)
+		go processCommand(jsonCommand, responseProducer)
+	}
+}
+
+func processCommand(jsonCommand []byte, responseProducer chan []byte) {
+	var c ari.Command
+	var r ari.CommandResponse
+	json.Unmarshal(jsonCommand, &c)
+	fullURL := strings.Join([]string{config.Stasis_URL, c.URL, "?api_key=", config.WS_User, ":", config.WS_Password }, "")
+	fmt.Println(fullURL)
+	req, err := http.NewRequest(c.Method, fullURL, bytes.NewBufferString(c.Body))
+	req.Header.Set("Content-Type", "application/json")
+	res, err := client.Do(req)
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(res.Body)
+	r.ResponseBody = buf.String()
+	r.UniqueID = c.UniqueID
+	r.StatusCode = res.StatusCode
+	sendJSON, err := json.Marshal(r)
+	if err !=nil {
+		fmt.Println(err)
+	}
+	responseProducer <- sendJSON
+}
 // signalCatcher is a function to allows us to stop the application through an
 // operating system signal.
 func signalCatcher() {
@@ -112,10 +148,12 @@ func signalCatcher() {
 }
 
 func main() {
-	// Setup a new producer for every application we've configured in the configuration file.
+	// Setup a new Event producer and Command consumer for every application
+	// we've configured in the configuration file.
 	for _, app := range config.Applications {
-		producer := ari.InitProducer(config.MessageBus, config.BusConfig, app)	// Initialize a new producer channel using the ari.IntProducer function.
-		go CreateWS(app, producer)	// create new websocket connection for every application and pass the producer channel
+		producer := ari.InitProducer(app, config.MessageBus, config.BusConfig)	// Initialize a new producer channel using the ari.IntProducer function.
+		go runEventHandler(app, producer)	// create new websocket connection for every application and pass the producer channel
+		go runCommandConsumer(app)
 	}
 
 	go signalCatcher()	// listen for os signal to stop the application
