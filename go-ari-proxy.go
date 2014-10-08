@@ -1,30 +1,30 @@
 package main
 
 import (
+	"bytes"
+	"code.google.com/p/go.net/websocket"
 	"encoding/json"
-	"net/http"
 	"flag"
+	"go-ari-library"
 	"io/ioutil"
 	"log"
-	"bytes"
+	"net/http"
 	"os"
 	"os/signal"
-	"syscall"
 	"strings"
+	"syscall"
 	"time"
-	"code.google.com/p/go.net/websocket"
-	"go-ari-library"
 )
 
 // Var config contains a Config struct to hold the proxy configuration file.
 var (
-	config Config						// main proxy configuration structure
-	client = &http.Client{}				// connection for Commands to ARI
-	proxyInstances *proxyInstanceMap	// maps the per-dialog proxy instances
-	Debug   *log.Logger
-    Info    *log.Logger
-    Warning *log.Logger
-    Error   *log.Logger
+	config         Config            // main proxy configuration structure
+	client         = &http.Client{}  // connection for Commands to ARI
+	proxyInstances *proxyInstanceMap // maps the per-dialog proxy instances
+	Debug          *log.Logger
+	Info           *log.Logger
+	Warning        *log.Logger
+	Error          *log.Logger
 )
 
 // signalCatcher is a function to allows us to stop the application through an
@@ -63,7 +63,7 @@ func init() {
 	json.Unmarshal(configfile, &config)
 	Debug.Println(&config)
 	Debug.Println("Initialize the proxy instance map.")
-	proxyInstances = NewproxyInstanceMap()		// initialize a new proxy instance map
+	proxyInstances = NewproxyInstanceMap() // initialize a new proxy instance map
 }
 
 func main() {
@@ -78,12 +78,12 @@ func main() {
 			be provided the information to setup the ownership of per dialog application instances.
 		*/
 		Info.Printf("Initializing signalling bus for application %s", app)
-		producer := ari.InitProducer(app)	// Initialize a new producer channel using the ari.IntProducer function.
+		producer := ari.InitProducer(app) // Initialize a new producer channel using the ari.IntProducer function.
 		Info.Printf("Starting event handler for application %s", app)
-		go runEventHandler(app, producer)	// create new websocket connection for every application and pass the producer channel
+		go runEventHandler(app, producer) // create new websocket connection for every application and pass the producer channel
 	}
 
-	go signalCatcher()	// listen for os signal to stop the application
+	go signalCatcher() // listen for os signal to stop the application
 	select {}
 }
 
@@ -103,11 +103,11 @@ func runEventHandler(s string, producer chan []byte) {
 	// passed to the PublishMessage() function.
 	Info.Printf("Starting producer loop for application %s", s)
 	for {
-		err = websocket.Message.Receive(ws, &ariMessage)		// accept the message from the websocket
+		err = websocket.Message.Receive(ws, &ariMessage) // accept the message from the websocket
 		if err != nil {
 			log.Fatal(err)
 		}
-		go PublishMessage(ariMessage, producer)	// publish message to the producer channel
+		go PublishMessage(ariMessage, producer) // publish message to the producer channel
 	}
 }
 
@@ -127,7 +127,7 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 	message.ServerID = config.ServerID
 	message.Timestamp = time.Now()
 	message.ARI_Body = ariMessage
-	switch  {
+	switch {
 	case info.Type == "StasisStart":
 		// since we're starting a new application instance, create the proxy side
 		dialogID := ari.UUID()
@@ -143,8 +143,8 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 		}
 
 		Info.Printf("Created new proxy instance mapping for dialog '%s' and channel '%s'", dialogID, info.Channel.ID)
-		pi = NewProxyInstance(dialogID)				// create new proxy instance for the dialog
-		proxyInstances.Add(info.Channel.ID, pi)		// add the dialog to the proxyInstances map to track its life
+		pi = NewProxyInstance(dialogID)         // create new proxy instance for the dialog
+		proxyInstances.Add(info.Channel.ID, pi) // add the dialog to the proxyInstances map to track its life
 		exists = true
 	case info.Type == "StasisEnd":
 		Info.Printf("Ending application instance for channel '%s'", info.Channel.ID)
@@ -217,13 +217,13 @@ func (p *proxyInstanceMap) Remove(id string) {
 
 // shutDown closes the quit channel to signal all of a ProxyInstance's goroutines
 // to return
-func (p *proxyInstance) shutDown () {
+func (p *proxyInstance) shutDown() {
 	close(p.quit)
 }
 
 // addObject adds an object reference to the proxyInstance mapping
 func (p *proxyInstance) addObject(id string) {
-	for i:= range p.ariObjects {
+	for i := range p.ariObjects {
 		if p.ariObjects[i] == id {
 			//object already is associated with this proxyInstance
 			return
@@ -259,7 +259,7 @@ func (p *proxyInstance) removeAllObjects() {
 	for _, obj := range p.ariObjects {
 		proxyInstances.Remove(obj)
 	}
-	p.shutDown()	// destroy the application / proxy instance
+	p.shutDown() // destroy the application / proxy instance
 }
 
 // runCommandConsumer starts the consumer for accepting Commands from
@@ -270,18 +270,18 @@ func (p *proxyInstance) runCommandConsumer(dialogID string) {
 	Debug.Println("Topics are:", commandTopic, " ", responseTopic)
 	p.responseChannel = ari.InitProducer(responseTopic)
 	select {
-	case <- ari.TopicExists(commandTopic):
+	case <-ari.TopicExists(commandTopic):
 		p.commandChannel = ari.InitConsumer(commandTopic)
-	case <- time.After(10 * time.Second):
+	case <-time.After(10 * time.Second):
 		p.removeAllObjects()
 		return
 	}
 
 	for {
 		select {
-		case jsonCommand := <- p.commandChannel:
+		case jsonCommand := <-p.commandChannel:
 			go p.processCommand(jsonCommand, p.responseChannel)
-		case <- p.quit:
+		case <-p.quit:
 			return
 		}
 	}
@@ -292,10 +292,10 @@ func (p *proxyInstance) runCommandConsumer(dialogID string) {
 func (p *proxyInstance) processCommand(jsonCommand []byte, responseProducer chan []byte) {
 	var c ari.Command
 	var r ari.CommandResponse
-	i := ID{ID:"", Name:""}
+	i := ID{ID: "", Name: ""}
 	Debug.Printf("jsonCommand is %s\n", string(jsonCommand))
 	json.Unmarshal(jsonCommand, &c)
-	fullURL := strings.Join([]string{config.Stasis_URL, c.URL, "?api_key=", config.WS_User, ":", config.WS_Password }, "")
+	fullURL := strings.Join([]string{config.Stasis_URL, c.URL, "?api_key=", config.WS_User, ":", config.WS_Password}, "")
 	Debug.Printf("fullURL is %s\n", fullURL)
 	req, err := http.NewRequest(c.Method, fullURL, bytes.NewBufferString(c.Body))
 	req.Header.Set("Content-Type", "application/json")
@@ -312,7 +312,7 @@ func (p *proxyInstance) processCommand(jsonCommand []byte, responseProducer chan
 	r.ResponseBody = buf.String()
 	r.StatusCode = res.StatusCode
 	sendJSON, err := json.Marshal(r)
-	if err !=nil {
+	if err != nil {
 		Error.Println(err)
 	}
 	Debug.Printf("sendJSON is %s\n", string(sendJSON))
