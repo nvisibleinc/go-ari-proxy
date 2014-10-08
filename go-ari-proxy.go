@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"flag"
-	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"bytes"
@@ -22,6 +22,10 @@ var (
 	config Config						// main proxy configuration structure
 	client = &http.Client{}				// connection for Commands to ARI
 	proxyInstances *proxyInstanceMap	// maps the per-dialog proxy instances
+    Debug   *log.Logger
+    Info    *log.Logger
+    Warning *log.Logger
+    Error   *log.Logger
 )
 
 // signalCatcher is a function to allows us to stop the application through an
@@ -34,27 +38,54 @@ func signalCatcher() {
 	os.Exit(0)
 }
 
+func InitializeLogging (debugHandle io.Writer, infoHandle io.Writer, warningHandle io.Writer, errorHandle io.Writer) {
+    Debug = log.New(debugHandle,
+        "DEBUG: ",
+        log.Ldate|log.Ltime|log.Lshortfile)
+
+    Info = log.New(infoHandle,
+        "INFO: ",
+        log.Ldate|log.Ltime|log.Lshortfile)
+
+    Warning = log.New(warningHandle,
+        "WARNING: ",
+        log.Ldate|log.Ltime|log.Lshortfile)
+
+    Error = log.New(errorHandle,
+        "ERROR: ",
+        log.Ldate|log.Ltime|log.Lshortfile)
+}
+
 // Init parses the configuration file by unmarshaling it into a Config struct.
 func init() {
 	var err error
 
+	// initialize logging
+	InitializeLogging(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
+
 	// parse the configuration file and get data from it
+	Info.Println("Loading configuration for proxy.")
 	configpath := flag.String("config", "./config.json", "Path to config file")
 
+	Debug.Println("Parsing the configuration file.")
 	flag.Parse()
+	Debug.Println("Reading in the configuration from the file.")
 	configfile, err := ioutil.ReadFile(*configpath)
 	if err != nil {
-		log.Fatal(err)
+		Error.Fatal(err)
 	}
 	// read in the configuration file and unmarshal the json, storing it in 'config'
+	Debug.Println("Unmarshaling proxy configuration.")
 	json.Unmarshal(configfile, &config)
-	fmt.Println(&config)
+	Debug.Println(&config)
+	Debug.Println("Initialize the proxy instance map.")
 	proxyInstances = NewproxyInstanceMap()		// initialize a new proxy instance map
 }
 
 func main() {
 	// Setup a new Event producer and Command consumer for every application
 	// we've configured in the configuration file.
+	Info.Println("Initializing the message bus.")
 	ari.InitBus(config.MessageBus, config.BusConfig)
 	for _, app := range config.Applications {
 		/*
@@ -62,7 +93,9 @@ func main() {
 			to signal the setup of per-application instances. All applications listen to this topic in order to
 			be provided the information to setup the ownership of per dialog application instances.
 		*/
+		Info.Printf("Initializing signalling bus for application %s", app)
 		producer := ari.InitProducer(app)	// Initialize a new producer channel using the ari.IntProducer function.
+		Info.Printf("Starting event handler for application %s", app)
 		go runEventHandler(app, producer)	// create new websocket connection for every application and pass the producer channel
 	}
 
@@ -75,6 +108,8 @@ func runEventHandler(s string, producer chan []byte) {
 	// Connect to the websocket backend (ARI)
 	var ariMessage string
 	url := strings.Join([]string{config.Websocket_URL, "?app=", s, "&api_key=", config.WS_User, ":", config.WS_Password}, "")
+
+	Info.Printf("Attempting to connect to ARI websocket at: %s", url)
 	ws, err := websocket.Dial(url, "ari", config.Origin)
 	if err != nil {
 		log.Fatal(err)
@@ -82,6 +117,7 @@ func runEventHandler(s string, producer chan []byte) {
 
 	// Start the producer loop. Every message received from the websocket is
 	// passed to the PublishMessage() function.
+	Info.Printf("Starting producer loop for application %s", s)
 	for {
 		err = websocket.Message.Receive(ws, &ariMessage)		// accept the message from the websocket
 		if err != nil {
@@ -111,7 +147,7 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 	case info.Type == "StasisStart":
 		// since we're starting a new application instance, create the proxy side
 		dialogID := ari.UUID()
-		fmt.Println("Dialog ID is:", dialogID)
+		Info.Println("New StasisStart found. Created new dialogID of ", dialogID)
 		as, err := json.Marshal(ari.AppStart{Application: info.Application, DialogID: dialogID})
 		producer <- as
 
@@ -121,10 +157,13 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 		if err != nil {
 			return
 		}
+
+		Info.Printf("Created new proxy instance mapping for dialog '%s' and channel '%s'", dialogID, info.Channel.ID)
 		pi = NewProxyInstance(dialogID)				// create new proxy instance for the dialog
 		proxyInstances.Add(info.Channel.ID, pi)		// add the dialog to the proxyInstances map to track its life
 		exists = true
 	case info.Type == "StasisEnd":
+		Info.Printf("Ending application instance for channel '%s'", info.Channel.ID)
 		// on application end, perform clean up checks
 		pi, exists = proxyInstances.Get(info.Channel.ID)
 		if exists {
@@ -147,7 +186,7 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 	case strings.HasPrefix(message.Type, "Playback"):
 		pi, exists = proxyInstances.Get(info.Playback.ID)
 	default:
-		fmt.Println("No handler for event type")
+		Warning.Println("No handler for event type")
 		//pi, exists = proxyInstances[]
 		// if not matching, then we need to perform checks against the
 		// existing map to determine where to send this ARI message.
@@ -155,10 +194,10 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 	// marshal the message back into a string
 	busMessage, err := json.Marshal(message)
 	if err != nil {
-		fmt.Println(err)
+		Error.Println(err)
 		return
 	}
-	fmt.Printf("[DEBUG] Bus Data:\n%s\n", busMessage)
+	Debug.Printf("Bus Data:\n%s\n", busMessage)
 
 	// push the busMessage onto the producer channel
 	if exists {
@@ -242,7 +281,7 @@ func (p *proxyInstance) removeAllObjects() {
 func (p *proxyInstance) runCommandConsumer(dialogID string) {
 	commandTopic := strings.Join([]string{"commands", dialogID}, "_")
 	responseTopic := strings.Join([]string{"responses", dialogID}, "_")
-	fmt.Println("Topics are:", commandTopic, " ", responseTopic)
+	Debug.Println("Topics are:", commandTopic, " ", responseTopic)
 	p.responseChannel = ari.InitProducer(responseTopic)
 	select {
 	case <- ari.TopicExists(commandTopic):
@@ -268,16 +307,16 @@ func (p *proxyInstance) processCommand(jsonCommand []byte, responseProducer chan
 	var c ari.Command
 	var r ari.CommandResponse
 	i := ID{ID:"", Name:""}
-	fmt.Printf("jsonCommand is %s\n", string(jsonCommand))
+	Debug.Printf("jsonCommand is %s\n", string(jsonCommand))
 	json.Unmarshal(jsonCommand, &c)
 	fullURL := strings.Join([]string{config.Stasis_URL, c.URL, "?api_key=", config.WS_User, ":", config.WS_Password }, "")
-	fmt.Println(fullURL)
+	Debug.Printf("fullURL is %s\n", fullURL)
 	req, err := http.NewRequest(c.Method, fullURL, bytes.NewBufferString(c.Body))
 	req.Header.Set("Content-Type", "application/json")
 	res, err := client.Do(req)
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(res.Body)
-	fmt.Printf("Response body is %s\n", buf.String())
+	Debug.Printf("Response body is %s\n", buf.String())
 	json.Unmarshal(buf.Bytes(), &i)
 	if i.ID != "" {
 		p.addObject(i.ID)
@@ -288,8 +327,8 @@ func (p *proxyInstance) processCommand(jsonCommand []byte, responseProducer chan
 	r.StatusCode = res.StatusCode
 	sendJSON, err := json.Marshal(r)
 	if err !=nil {
-		fmt.Println(err)
+		Error.Println(err)
 	}
-	fmt.Printf("sendJSON is %s\n", string(sendJSON))
+	Debug.Printf("sendJSON is %s\n", string(sendJSON))
 	responseProducer <- sendJSON
 }
