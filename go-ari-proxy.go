@@ -5,7 +5,7 @@ import (
 	"code.google.com/p/go.net/websocket"
 	"encoding/json"
 	"flag"
-	"go-ari-library"
+	"github.com/nvisibleinc/go-ari-library"
 	"io/ioutil"
 	"log"
 	"net/http"
