@@ -78,7 +78,7 @@ func main() {
 			be provided the information to setup the ownership of per dialog application instances.
 		*/
 		Info.Printf("Initializing signalling bus for application %s", app)
-		producer := ari.InitProducer(app) // Initialize a new producer channel using the ari.IntProducer function.
+		producer := ari.InitProducer(app) // Initialize a new producer channel using the ari.InitProducer function.
 		Info.Printf("Starting event handler for application %s", app)
 		go runEventHandler(app, producer) // create new websocket connection for every application and pass the producer channel
 	}
