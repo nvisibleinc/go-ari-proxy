@@ -127,6 +127,7 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 	message.ServerID = config.ServerID
 	message.Timestamp = time.Now()
 	message.ARI_Body = ariMessage
+
 	switch {
 	case info.Type == "StasisStart":
 		// since we're starting a new application instance, create the proxy side
@@ -146,6 +147,7 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 		pi = NewProxyInstance(dialogID)         // create new proxy instance for the dialog
 		proxyInstances.Add(info.Channel.ID, pi) // add the dialog to the proxyInstances map to track its life
 		exists = true
+
 	case info.Type == "StasisEnd":
 		Info.Printf("Ending application instance for channel '%s'", info.Channel.ID)
 		// on application end, perform clean up checks
@@ -153,28 +155,42 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 		if exists {
 			pi.removeAllObjects()
 		}
+
 	case info.Type == "BridgeDestroyed":
 		pi, exists = proxyInstances.Get(info.Bridge.ID)
 		if exists {
 			pi.removeObject(info.Bridge.ID)
 		}
+
 	case info.Type == "ChannelDestroyed":
 		pi, exists = proxyInstances.Get(info.Channel.ID)
 		if exists {
 			pi.removeObject(info.Channel.ID)
 		}
+
+	// check if prefix is part of the minChan{} struct
 	case strings.HasPrefix(info.Type, "Channel"):
 		pi, exists = proxyInstances.Get(info.Channel.ID)
+
+	// check if prefix is part of the minBridge{} struct
 	case strings.HasPrefix(message.Type, "Bridge"):
 		pi, exists = proxyInstances.Get(info.Bridge.ID)
+
+	// check if prefix is part of the minPlay{} struct
 	case strings.HasPrefix(message.Type, "Playback"):
 		pi, exists = proxyInstances.Get(info.Playback.ID)
+
+	// check if prefix is part of the minRec{} struct (this one uses a Name instead of ID for some reason)
+	case strings.HasPrefix(message.Type, "Recording"):
+		pi, exists = proxyInstances.Get(info.Recording.Name)
+
 	default:
 		Warning.Println("No handler for event type")
 		//pi, exists = proxyInstances[]
 		// if not matching, then we need to perform checks against the
 		// existing map to determine where to send this ARI message.
 	}
+
 	// marshal the message back into a string
 	busMessage, err := json.Marshal(message)
 	if err != nil {
