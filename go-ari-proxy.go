@@ -133,7 +133,7 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 		// since we're starting a new application instance, create the proxy side
 		dialogID := ari.UUID()
 		Info.Println("New StasisStart found. Created new dialogID of ", dialogID)
-		as, err := json.Marshal(ari.AppStart{Application: info.Application, DialogID: dialogID})
+		as, err := json.Marshal(ari.AppStart{Application: info.Application, DialogID: dialogID, ServerID: message.ServerID})
 		producer <- as
 
 		// TODO: this sleep is required to allow the application time to spin up. In the future we likely want
