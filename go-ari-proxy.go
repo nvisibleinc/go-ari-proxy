@@ -330,6 +330,7 @@ func (p *proxyInstance) processCommand(jsonCommand []byte, responseProducer chan
 	}
 	r.ResponseBody = buf.String()
 	r.StatusCode = res.StatusCode
+	r.UniqueID = c.UniqueID			// return the Command UID in the response
 	sendJSON, err := json.Marshal(r)
 	if err != nil {
 		Error.Println(err)
