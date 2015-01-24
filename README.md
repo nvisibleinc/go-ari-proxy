@@ -20,6 +20,7 @@ The primary purpose of the broadcast channel is to distribute to one or more app
 
 ### Application topic
 ![Application Topic](docs/images/app-topic.jpg "Application Topic")
+
 1. proxy starts up and connects to the websocket
 2. proxy connects to the signalling topic, named for the application (configured via JSON)
 3. applications connect to same signalling topic based on their configuration
@@ -27,6 +28,7 @@ The primary purpose of the broadcast channel is to distribute to one or more app
 
 ### Dialog topic
 ![Dialog Topic](docs/images/dialog-topics.jpg "Application Topic")
+
 1. on `StasisStart` event, the proxy creates a new _ProxyInstance_, creating a unique _dialogID_, and connect to three new topics
 2. On new _dialog_ setup, the proxy sends a new `AppStart` event across the signalling channel to tell the application which topics to listen for _Events_, to send _Commands_, and to listen for _Command Responses_.
 
