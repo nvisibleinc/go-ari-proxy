@@ -1,7 +1,7 @@
 package main
 
 import (
-	"go-ari-library"
+	"github.com/nvisibleinc/go-ari-library"
 	"strings"
 	"sync"
 )
