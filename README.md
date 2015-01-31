@@ -10,7 +10,7 @@ REST Interface for delivery of Events and Commands across a message bus.
 
 Installation
 ------------
-```go
+```
 $ go build go-ari-proxy
 ```
 
@@ -32,4 +32,4 @@ Licensing
 > along with this program; if not, write to the Free Software
 > Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-	[1]: https://github.com/nvisibleinc/go-ari-proxy
+   [1]: https://github.com/nvisibleinc/go-ari-proxy
