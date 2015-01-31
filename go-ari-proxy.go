@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"flag"
-	"io"
 	"io/ioutil"
 	"log"
 	"bytes"
@@ -22,7 +21,7 @@ var (
 	config Config						// main proxy configuration structure
 	client = &http.Client{}				// connection for Commands to ARI
 	proxyInstances *proxyInstanceMap	// maps the per-dialog proxy instances
-    Debug   *log.Logger
+	Debug   *log.Logger
     Info    *log.Logger
     Warning *log.Logger
     Error   *log.Logger
@@ -38,30 +37,15 @@ func signalCatcher() {
 	os.Exit(0)
 }
 
-func InitializeLogging (debugHandle io.Writer, infoHandle io.Writer, warningHandle io.Writer, errorHandle io.Writer) {
-    Debug = log.New(debugHandle,
-        "DEBUG: ",
-        log.Ldate|log.Ltime|log.Lshortfile)
-
-    Info = log.New(infoHandle,
-        "INFO: ",
-        log.Ldate|log.Ltime|log.Lshortfile)
-
-    Warning = log.New(warningHandle,
-        "WARNING: ",
-        log.Ldate|log.Ltime|log.Lshortfile)
-
-    Error = log.New(errorHandle,
-        "ERROR: ",
-        log.Ldate|log.Ltime|log.Lshortfile)
-}
-
 // Init parses the configuration file by unmarshaling it into a Config struct.
 func init() {
 	var err error
 
-	// initialize logging
-	InitializeLogging(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
+	// Setup our logging interfaces
+	Debug = ari.InitLogger(ioutil.Discard, "DEBUG")
+	Info = ari.InitLogger(os.Stdout, "INFO")
+	Warning = ari.InitLogger(os.Stdout, "WARNING")
+	Error = ari.InitLogger(os.Stderr, "ERROR")
 
 	// parse the configuration file and get data from it
 	Info.Println("Loading configuration for proxy.")
@@ -237,6 +221,7 @@ func (p *proxyInstance) shutDown () {
 	close(p.quit)
 }
 
+// addObject adds an object reference to the proxyInstance mapping
 func (p *proxyInstance) addObject(id string) {
 	for i:= range p.ariObjects {
 		if p.ariObjects[i] == id {
@@ -249,6 +234,7 @@ func (p *proxyInstance) addObject(id string) {
 
 }
 
+// removeObject removes an object reference from the proxyInstance mapping
 func (p *proxyInstance) removeObject(id string) {
 	// remove an object from the map.
 	for i := range p.ariObjects {
@@ -258,7 +244,6 @@ func (p *proxyInstance) removeObject(id string) {
 			p.ariObjects = append(p.ariObjects[:i], p.ariObjects[i+1:]...)
 		}
 	}
-
 	// remove the instance from our tracking map
 	proxyInstances.Remove(id)
 
@@ -268,6 +253,7 @@ func (p *proxyInstance) removeObject(id string) {
 	}
 }
 
+// removeAllObjects will remove all object references from the proxyInstance mapping
 func (p *proxyInstance) removeAllObjects() {
 	// remove all objects from the map as our application is shutting down.
 	for _, obj := range p.ariObjects {
