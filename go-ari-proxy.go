@@ -128,18 +128,21 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 	case info.Type == "StasisStart":
 		// since we're starting a new application instance, create the proxy side
 		dialogID := ari.UUID()
-		p := initProxyInstance(dialogID)
-		proxyInstances[info.Channel.ID] = p
+		fmt.Println("Dialog ID is:", dialogID)
 		as, err := json.Marshal(ari.AppStart{Application: info.Application, DialogID: dialogID})
+		producer <- as
+		time.Sleep(50 * time.Millisecond)
 		if err != nil {
 			return
 		}
-		producer <- as
+		pi = initProxyInstance(dialogID)
+		proxyInstances[info.Channel.ID] = pi
+		exists = true
 	case info.Type == "StasisEnd":
 		// on application end, perform clean up checks
 		pi, exists = proxyInstances[info.Channel.ID]
 		if exists {
-			pi.removeAllObjects()
+			//pi.removeAllObjects()
 		}
 	case info.Type == "BridgeDestroyed":
 		pi, exists = proxyInstances[info.Bridge.ID]
@@ -167,7 +170,7 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 		fmt.Println(err)
 		return
 	}
-	fmt.Printf("[DEBUG] Bus Data:\n%s", busMessage)
+	fmt.Printf("[DEBUG] Bus Data:\n%s\n", busMessage)
 
 	// push the busMessage onto the producer channel
 	if exists {
@@ -179,8 +182,8 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 func initProxyInstance(dialogID string) *proxyInstance {
 	var p proxyInstance
 	p.quit = make(chan int)
-	p.Events = ari.InitProducer(dialogID, config.MessageBus, config.BusConfig)
-	p.runCommandConsumer(dialogID)
+	p.Events = ari.InitProducer(strings.Join([]string{"events", dialogID}, "_"))
+	go p.runCommandConsumer(dialogID)
 	return &p
 }
 
@@ -252,8 +255,18 @@ func (p *proxyInstance) removeAllObjects() {
 // runCommandConsumer starts the consumer for accepting Commands from
 // applications.
 func (p *proxyInstance) runCommandConsumer(dialogID string) {
-	p.commandChannel = ari.InitConsumer(strings.Join([]string{dialogID, "commands"},"_"), config.MessageBus, config.BusConfig)
-	p.responseChannel = ari.InitProducer(strings.Join([]string{dialogID, "responses"},"_"), config.MessageBus, config.BusConfig)
+	commandTopic := strings.Join([]string{"commands", dialogID}, "_")
+	responseTopic := strings.Join([]string{"responses", dialogID}, "_")
+	fmt.Println("Topics are:", commandTopic, " ", responseTopic)
+	p.responseChannel = ari.InitProducer(responseTopic)
+	select {
+	case <- ari.TopicExists(commandTopic):
+		p.commandChannel = ari.InitConsumer(commandTopic)
+	case <- time.After(10 * time.Second):
+		p.removeAllObjects()
+		return
+	}
+	
 	for {
 		select {
 		case jsonCommand := <- p.commandChannel:
@@ -270,6 +283,7 @@ func (p *proxyInstance) processCommand(jsonCommand []byte, responseProducer chan
 	var c ari.Command
 	var r ari.CommandResponse
 	i := ID{ID:"", Name:""}
+	fmt.Printf("jsonCommand is %s\n", string(jsonCommand))
 	json.Unmarshal(jsonCommand, &c)
 	fullURL := strings.Join([]string{config.Stasis_URL, c.URL, "?api_key=", config.WS_User, ":", config.WS_Password }, "")
 	fmt.Println(fullURL)
@@ -278,6 +292,7 @@ func (p *proxyInstance) processCommand(jsonCommand []byte, responseProducer chan
 	res, err := client.Do(req)
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(res.Body)
+	fmt.Printf("Response body is %s\n", buf.String())
 	json.Unmarshal(buf.Bytes(), &i)
 	if i.ID != "" {
 		p.addObject(i.ID)
@@ -290,6 +305,7 @@ func (p *proxyInstance) processCommand(jsonCommand []byte, responseProducer chan
 	if err !=nil {
 		fmt.Println(err)
 	}
+	fmt.Printf("sendJSON is %s\n", string(sendJSON))
 	responseProducer <- sendJSON
 }
 
@@ -306,8 +322,9 @@ func signalCatcher() {
 func main() {
 	// Setup a new Event producer and Command consumer for every application
 	// we've configured in the configuration file.
+	ari.InitBus(config.MessageBus, config.BusConfig)
 	for _, app := range config.Applications {
-		producer := ari.InitProducer(app, config.MessageBus, config.BusConfig)	// Initialize a new producer channel using the ari.IntProducer function.
+		producer := ari.InitProducer(app)	// Initialize a new producer channel using the ari.IntProducer function.
 		go runEventHandler(app, producer)	// create new websocket connection for every application and pass the producer channel
 	}
 
