@@ -32,9 +32,10 @@ type Config struct {
 }
 
 type NV_Event struct {
-    ServerID    string
-    Timestamp   time.Time
-    ARI_Event   string
+  ServerID    string `json:"server_id"`
+  Timestamp   time.Time `json:"timestamp"`
+  Type        string `json:"type"`
+  ARI_Event   string `json:"ari_event"`
 }
 
 func init() {
@@ -53,14 +54,17 @@ func init() {
 }
 
 func ProcessMessage(ariMessage,ariApplication string, p *nsq.Producer) {
-  fmt.Printf("[DEBUG] Got ARI Message:\n%s", ariMessage)
-  message := NV_Event{ServerID:config.ServerID, Timestamp:time.Now(),ARI_Event:ariMessage}
+  var message NV_Event
+  json.Unmarshal([]byte(ariMessage), &message)
+  message.ServerID = config.ServerID
+  message.Timestamp = time.Now()
+  message.ARI_Event = ariMessage
 
 	busMessage, err := json.Marshal(message)
 	if err != nil {
 		panic(err)
 	}
-
+  fmt.Printf("[DEBUG] Bus Data:\n%s", busMessage)
 	p.Publish(ariApplication, []byte(busMessage))
 }
 
