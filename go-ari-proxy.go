@@ -42,7 +42,7 @@ func init() {
 	var err error
 
 	// Setup our logging interfaces
-	Debug = ari.InitLogger(ioutil.Discard, "DEBUG")
+	Debug = ari.InitLogger(os.Stdout, "DEBUG")
 	Info = ari.InitLogger(os.Stdout, "INFO")
 	Warning = ari.InitLogger(os.Stdout, "WARNING")
 	Error = ari.InitLogger(os.Stderr, "ERROR")
@@ -269,10 +269,13 @@ func (p *proxyInstance) runCommandConsumer(dialogID string) {
 	responseTopic := strings.Join([]string{"responses", dialogID}, "_")
 	Debug.Println("Topics are:", commandTopic, " ", responseTopic)
 	p.responseChannel = ari.InitProducer(responseTopic)
+
+	// waits for the TopicExists function to return a channel
 	select {
 	case <-ari.TopicExists(commandTopic):
 		p.commandChannel = ari.InitConsumer(commandTopic)
 	case <-time.After(10 * time.Second):
+		// if the application instance hasn't come up after a period of time, gracefully end the proxy instance
 		p.removeAllObjects()
 		return
 	}
