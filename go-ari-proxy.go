@@ -133,7 +133,7 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 		// since we're starting a new application instance, create the proxy side
 		dialogID := ari.UUID()
 		Info.Println("New StasisStart found. Created new dialogID of ", dialogID)
-		as, err := json.Marshal(ari.AppStart{Application: info.Application, DialogID: dialogID})
+		as, err := json.Marshal(ari.AppStart{Application: info.Application, DialogID: dialogID, ServerID: config.ServerID})
 		producer <- as
 
 		// TODO: this sleep is required to allow the application time to spin up. In the future we likely want
@@ -234,7 +234,14 @@ func (p *proxyInstanceMap) Remove(id string) {
 // shutDown closes the quit channel to signal all of a ProxyInstance's goroutines
 // to return
 func (p *proxyInstance) shutDown() {
-	close(p.quit)
+	select {
+	case _, ok := (<-p.quit):
+		if !ok {
+			return
+		}
+	default:
+		close(p.quit)
+	}
 }
 
 // addObject adds an object reference to the proxyInstance mapping
@@ -330,6 +337,7 @@ func (p *proxyInstance) processCommand(jsonCommand []byte, responseProducer chan
 	}
 	r.ResponseBody = buf.String()
 	r.StatusCode = res.StatusCode
+	r.UniqueID = c.UniqueID			// return the Command UID in the response
 	sendJSON, err := json.Marshal(r)
 	if err != nil {
 		Error.Println(err)
