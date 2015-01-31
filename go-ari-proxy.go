@@ -13,8 +13,7 @@ import (
 	"time"
 
 	"code.google.com/p/go.net/websocket"
-	"github.com/bitly/go-nsq"
-	"github.com/bitly/nsq/util"
+	"go-ari-library"
 )
 
 var (
@@ -22,20 +21,14 @@ var (
 )
 
 type Config struct {
-	Origin        string   `json:"origin"`
-	ServerID      string   `json:"server_id"`
-	Applications  []string `json:"applications"`
-	Websocket_URL string   `json:"websocket_url"`
-	WS_User       string   `json:"ws_user"`
-	WS_Password   string   `json:"ws_password"`
-	NSQ_Addr      string   `json:"nsq_addr"`
-}
-
-type NV_Event struct {
-	ServerID  string    `json:"server_id"`
-	Timestamp time.Time `json:"timestamp"`
-	Type      string    `json:"type"`
-	ARI_Event string    `json:"ari_event"`
+	Origin        string      `json:"origin"`
+	ServerID      string      `json:"server_id"`
+	Applications  []string    `json:"applications"`
+	Websocket_URL string      `json:"websocket_url"`
+	WS_User       string      `json:"ws_user"`
+	WS_Password   string      `json:"ws_password"`
+	MessageBus    string      `json:"message_bus"`
+	BusConfig     interface{} `json:"bus_config"`
 }
 
 func init() {
@@ -43,48 +36,41 @@ func init() {
 
 	// parse the configuration file and get data from it
 	configpath := flag.String("config", "./config.json", "Path to config file")
+
 	flag.Parse()
 	configfile, err := ioutil.ReadFile(*configpath)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	// read in the configuration file and unmarshal the json, storing it in 'config'
 	json.Unmarshal(configfile, &config)
+	fmt.Println(&config)
 }
 
-func PublishMessage(ariMessage, ariApplication string, p *nsq.Producer) {
-	var message NV_Event
+func PublishMessage(ariMessage string, producer chan []byte) {
+	var message ari.Event
 	json.Unmarshal([]byte(ariMessage), &message)
 	message.ServerID = config.ServerID
 	message.Timestamp = time.Now()
-	message.ARI_Event = ariMessage
+	message.ARI_Body = ariMessage
 
 	busMessage, err := json.Marshal(message)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("[DEBUG] Bus Data:\n%s", busMessage)
-	p.Publish(ariApplication, []byte(busMessage))
+	producer <- busMessage
 }
 
 func ConsumeCommand() {
 
 }
 
-func CreateWS(s string) {
+func CreateWS(s string, producer chan []byte) {
 	// connect to the websocket backend (ARI)
 	var ariMessage string
 	url := strings.Join([]string{config.Websocket_URL, "?app=", s, "&api_key=", config.WS_User, ":", config.WS_Password}, "")
 	ws, err := websocket.Dial(url, "ari", config.Origin)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// load new nsq instance from configuration file
-	nsqcfg := nsq.NewConfig()
-	nsqcfg.UserAgent = fmt.Sprintf("to_nsq/%s go-nsq/%s", util.BINARY_VERSION, nsq.VERSION)
-	producer, err := nsq.NewProducer(config.NSQ_Addr, nsqcfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -95,7 +81,7 @@ func CreateWS(s string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		go PublishMessage(ariMessage, s, producer)
+		go PublishMessage(ariMessage, producer)
 	}
 }
 
@@ -108,8 +94,11 @@ func signalCatcher() {
 }
 
 func main() {
+
+	// p *nsq.Producer
 	for _, app := range config.Applications {
-		go CreateWS(app)
+		producer := ari.InitProducer(config.MessageBus, config.BusConfig, app)
+		go CreateWS(app, producer)
 	}
 
 	go signalCatcher()
