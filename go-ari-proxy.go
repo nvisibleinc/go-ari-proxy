@@ -234,7 +234,14 @@ func (p *proxyInstanceMap) Remove(id string) {
 // shutDown closes the quit channel to signal all of a ProxyInstance's goroutines
 // to return
 func (p *proxyInstance) shutDown() {
-	close(p.quit)
+	select {
+	case _, ok := (<-p.quit):
+		if !ok {
+			return
+		}
+	default:
+		close(p.quit)
+	}
 }
 
 // addObject adds an object reference to the proxyInstance mapping
