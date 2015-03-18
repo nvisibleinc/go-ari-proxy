@@ -12,11 +12,13 @@ The `go-ari-proxy` is an application that makes it easier to build external appl
 
 ## How It Works
 
-The `go-ari-proxy` application works by using a message bus (NATS, NSQ, RabbitMQ) and having a _broadcast_ channel (topic, queue) that applications listen to. When a `StasisStart` is recieved by the proxy, we perform an `AppStart` which broadcasts this information.
+The `go-ari-proxy` application works by using a message bus (NATS, RabbitMQ) and having a _broadcast_ channel (topic, queue) that applications listen to. When a `StasisStart` is recieved by the proxy, we perform an `AppStart` which broadcasts this information.
 
 The message bus then distributes this to an application listening on the topic. From there, the application knows what topic to subscribe to in order to continue the conversation. Currently this setup channel is unidirectional, however in the future it may be further enhanced/designed to allow for applications to acknowledge setup of a dialog.
 
 The primary purpose of the broadcast channel is to distribute to one or more application instances, and then a dialog is created over three (3) additional topics. These topics are: *Events*, *Commands*, and *CommandResponses*.
+
+NOTE:  Prior revisions of the go-ari-library upon which this proxy is built had support for the NSQ message bus.  Unfortunately, as a result of the eventually consistent semantics of NSQ's topic discovery mechanism, its use is no longer supported and the code was removed.
 
 ### Application topic
 ![Application Topic](docs/images/app-topic.jpg "Application Topic")
