@@ -321,6 +321,16 @@ func (p *proxyInstance) processCommand(jsonCommand []byte, responseProducer chan
 	i := ID{ID: "", Name: ""}
 	Debug.Printf("jsonCommand is %s\n", string(jsonCommand))
 	json.Unmarshal(jsonCommand, &c)
+
+	//TODO:  Try to come up with something that makes me feel less dirty
+	if c.Method == "POST" && strings.Contains(c.URL, "/channels/")	&& strings.Count(c.URL, "/") == 2 {
+		chanID := strings.TrimPrefix(c.URL, "/channels/")
+		if chanID != "" {
+			p.addObject(chanID)
+		}
+	}
+	//ENDTODO
+
 	fullURL := strings.Join([]string{config.Stasis_URL, c.URL, "?api_key=", config.WS_User, ":", config.WS_Password}, "")
 	Debug.Printf("fullURL is %s\n", fullURL)
 	req, err := http.NewRequest(c.Method, fullURL, bytes.NewBufferString(c.Body))
