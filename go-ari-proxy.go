@@ -130,6 +130,13 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 
 	switch {
 	case info.Type == "StasisStart":
+
+		// Check to see if the new channel was already in the map, which means it
+		// was created by an originate with ID
+		pi, exists = proxyInstances.Get(info.Channel.ID)
+		if exists {
+			break
+		}
 		// since we're starting a new application instance, create the proxy side
 		dialogID := ari.UUID()
 		Info.Println("New StasisStart found. Created new dialogID of ", dialogID)
