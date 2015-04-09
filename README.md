@@ -40,7 +40,7 @@ NOTE:  Prior revisions of the go-ari-library upon which this proxy is built had 
 ## Installation
 ```
 $ cd $GOPATH/src
-$ go get https://github.com/nvisibleinc/go-ari-library
+$ go get github.com/nvisibleinc/go-ari-library
 $ git clone https://github.com/nvisibleinc/go-ari-proxy
 $ go install go-ari-proxy
 ```
