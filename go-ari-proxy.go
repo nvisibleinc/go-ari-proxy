@@ -94,7 +94,7 @@ func main() {
 func runEventHandler(s string, producer chan []byte) {
 	// Connect to the websocket backend (ARI)
 	var ariMessage string
-	url := strings.Join([]string{config.Websocket_URL, "?app=", s, "&api_key=", config.WS_User, ":", config.WS_Password}, "")
+	url := strings.Join([]string{config.WebsocketURL, "?app=", s, "&api_key=", config.WSUser, ":", config.WSPassword}, "")
 
 	Info.Printf("Attempting to connect to ARI websocket at: %s", url)
 	ws, err := websocket.Dial(url, "ari", config.Origin)
@@ -133,6 +133,13 @@ func PublishMessage(ariMessage string, producer chan []byte) {
 
 	switch {
 	case info.Type == "StasisStart":
+
+		// Check to see if the new channel was already in the map, which means it
+		// was created by an originate with ID
+		pi, exists = proxyInstances.Get(info.Channel.ID)
+		if exists {
+			break
+		}
 		// since we're starting a new application instance, create the proxy side
 		dialogID := ari.UUID()
 		Info.Println("New StasisStart found. Created new dialogID of ", dialogID)
@@ -324,7 +331,18 @@ func (p *proxyInstance) processCommand(jsonCommand []byte, responseProducer chan
 	i := ID{ID: "", Name: ""}
 	Debug.Printf("jsonCommand is %s\n", string(jsonCommand))
 	json.Unmarshal(jsonCommand, &c)
-	fullURL := strings.Join([]string{config.Stasis_URL, c.URL, "?api_key=", config.WS_User, ":", config.WS_Password}, "")
+
+	//TODO:  Try to come up with something that makes me feel less dirty
+	if c.Method == "POST" && strings.Contains(c.URL, "/channels/") && strings.Count(c.URL, "/") == 2 {
+		chanID := strings.TrimPrefix(c.URL, "/channels/")
+		if chanID != "" {
+			p.addObject(chanID)
+		}
+	}
+	//ENDTODO
+
+	fullURL := strings.Join([]string{config.StasisURL, c.URL, "?api_key=", config.WSUser, ":", config.WSPassword}, "")
+
 	Debug.Printf("fullURL is %s\n", fullURL)
 	req, err := http.NewRequest(c.Method, fullURL, bytes.NewBufferString(c.Body))
 	req.Header.Set("Content-Type", "application/json")

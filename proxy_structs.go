@@ -25,15 +25,15 @@ func NewproxyInstanceMap() *proxyInstanceMap {
 // The Config struct contains the information the was unmarshaled from the
 // configuration file for ths proxy.
 type Config struct {
-	Origin        string      `json:"origin"`        // connection to ARI events
-	ServerID      string      `json:"server_id"`     // unique server ident
-	Applications  []string    `json:"applications"`  // slice of applications to listen for
-	Websocket_URL string      `json:"websocket_url"` // websocket to connect to
-	Stasis_URL    string      `json:"stasis_url"`    // Base URL of ARI REST API
-	WS_User       string      `json:"ws_user"`       // username of websocket connection
-	WS_Password   string      `json:"ws_password"`   // pass of websocket connection
-	MessageBus    string      `json:"message_bus"`   // type of message bus to publish to
-	BusConfig     interface{} `json:"bus_config"`    // configuration of the message bus we're publishing to
+	Origin       string      `json:"origin"`        // connection to ARI events
+	ServerID     string      `json:"server_id"`     // unique server ident
+	Applications []string    `json:"applications"`  // slice of applications to listen for
+	WebsocketURL string      `json:"websocket_url"` // websocket to connect to
+	StasisURL    string      `json:"stasis_url"`    // Base URL of ARI REST API
+	WSUser       string      `json:"ws_user"`       // username of websocket connection
+	WSPassword   string      `json:"ws_password"`   // pass of websocket connection
+	MessageBus   string      `json:"message_bus"`   // type of message bus to publish to
+	BusConfig    interface{} `json:"bus_config"`    // configuration of the message bus we're publishing to
 }
 
 // proxyInstance struct contains the channels necessary for communications
