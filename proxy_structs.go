@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-// Struct proxyInstanceMap is a singleton which holds the map
+// proxyInstanceMap is a singleton which holds the map
 // of active proxy instances.
 type proxyInstanceMap struct {
 	instanceMap map[string]*proxyInstance
@@ -21,7 +21,7 @@ func NewproxyInstanceMap() *proxyInstanceMap {
 	return &p
 }
 
-// Struct Config holds the configuration for the proxy.
+// Config holds the configuration for the proxy.
 // The Config struct contains the information the was unmarshaled from the
 // configuration file for ths proxy.
 type Config struct {
@@ -36,7 +36,7 @@ type Config struct {
 	BusConfig    interface{} `json:"bus_config"`    // configuration of the message bus we're publishing to
 }
 
-// ProxyInstance struct contains the channels necessary for communications
+// proxyInstance struct contains the channels necessary for communications
 // to/from the various message bus topics and the event channel. This is
 // primarily used as the communications bus for setting up new instances of
 // applications.

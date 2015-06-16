@@ -1,4 +1,6 @@
-// vim: tabstop=4 softtabstop=4 shiftwidth=4 noexpandtab tw=72
+// go-ari-proxy is an implementation of the go-ari-library used to
+// connect to the Asterisk REST Interface for delivery of Events and
+// Commands across a message bus.
 package main
 
 import (
@@ -364,3 +366,5 @@ func (p *proxyInstance) processCommand(jsonCommand []byte, responseProducer chan
 	Debug.Printf("sendJSON is %s\n", string(sendJSON))
 	responseProducer <- sendJSON
 }
+
+// vim: tabstop=4 softtabstop=4 shiftwidth=4 noexpandtab tw=72
