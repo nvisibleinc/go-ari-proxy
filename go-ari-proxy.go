@@ -1,3 +1,4 @@
+// vim: tabstop=4 softtabstop=4 shiftwidth=4 noexpandtab tw=72
 package main
 
 import (
@@ -91,7 +92,7 @@ func main() {
 func runEventHandler(s string, producer chan []byte) {
 	// Connect to the websocket backend (ARI)
 	var ariMessage string
-	url := strings.Join([]string{config.Websocket_URL, "?app=", s, "&api_key=", config.WS_User, ":", config.WS_Password}, "")
+	url := strings.Join([]string{config.WebsocketURL, "?app=", s, "&api_key=", config.WSUser, ":", config.WSPassword}, "")
 
 	Info.Printf("Attempting to connect to ARI websocket at: %s", url)
 	ws, err := websocket.Dial(url, "ari", config.Origin)
@@ -330,7 +331,7 @@ func (p *proxyInstance) processCommand(jsonCommand []byte, responseProducer chan
 	json.Unmarshal(jsonCommand, &c)
 
 	//TODO:  Try to come up with something that makes me feel less dirty
-	if c.Method == "POST" && strings.Contains(c.URL, "/channels/")	&& strings.Count(c.URL, "/") == 2 {
+	if c.Method == "POST" && strings.Contains(c.URL, "/channels/") && strings.Count(c.URL, "/") == 2 {
 		chanID := strings.TrimPrefix(c.URL, "/channels/")
 		if chanID != "" {
 			p.addObject(chanID)
@@ -338,7 +339,8 @@ func (p *proxyInstance) processCommand(jsonCommand []byte, responseProducer chan
 	}
 	//ENDTODO
 
-	fullURL := strings.Join([]string{config.Stasis_URL, c.URL, "?api_key=", config.WS_User, ":", config.WS_Password}, "")
+	fullURL := strings.Join([]string{config.StasisURL, c.URL, "?api_key=", config.WSUser, ":", config.WSPassword}, "")
+
 	Debug.Printf("fullURL is %s\n", fullURL)
 	req, err := http.NewRequest(c.Method, fullURL, bytes.NewBufferString(c.Body))
 	req.Header.Set("Content-Type", "application/json")
@@ -354,7 +356,7 @@ func (p *proxyInstance) processCommand(jsonCommand []byte, responseProducer chan
 	}
 	r.ResponseBody = buf.String()
 	r.StatusCode = res.StatusCode
-	r.UniqueID = c.UniqueID			// return the Command UID in the response
+	r.UniqueID = c.UniqueID // return the Command UID in the response
 	sendJSON, err := json.Marshal(r)
 	if err != nil {
 		Error.Println(err)
