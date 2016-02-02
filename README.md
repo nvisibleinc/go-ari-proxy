@@ -46,7 +46,39 @@ $ go install go-ari-proxy
 ```
 
 ## Configuration
-TODO
+
+Add a `config.json` file to your directory you're running the application from.
+
+```js
+{
+    "origin": "foo",
+    "server_id": "bar",
+    "applications": [
+        "foo"
+    ],
+    "websocket_url": "http://localhost:8080",
+    "stasis_url": "http://localhost:8080",
+    "ws_user": "user",
+    "ws_password": "secret",
+    "message_bus": "RABBITMQ|NATS",
+    "bus_config": {
+        "url": "",
+        "queue": ""
+    }
+}
+```
+
+* **origin** - Connection to ARI events
+* **server_id** - Unique server identity
+* **applications** - Array of ARI applications to listen for
+* **websocket_url** - Websocket URL to connect to
+* **stasis_url** - Base URL of ARI REST API
+* **ws_user** - username of websocket/API connection
+* **ws_password** - password of websocket/API connection
+* **message_bus** - Type of message bus to use. Options are RABBITMQ and NATS
+* **bus_config** - An Object containing config for the message bus
+  * **url** - URI of the message bus
+  * **queue** - An option only for NATS, which queue to connect to
 
 ## Docker Container
 TODO
