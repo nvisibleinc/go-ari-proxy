@@ -5,7 +5,7 @@ package main
 
 import (
 	"bytes"
-	"code.google.com/p/go.net/websocket"
+	"golang.org/x/net/websocket"
 	"encoding/json"
 	"flag"
 	"github.com/nvisibleinc/go-ari-library"
