@@ -1,5 +1,8 @@
 go-ari-proxy
 ============
+
+[![Build Status](https://travis-ci.org/nvisibleinc/go-ari-proxy.svg?branch=master)](https://travis-ci.org/nvisibleinc/go-ari-proxy)
+
 An implementation of the [go-ari-library][1] used to connect to the Asterisk
 REST Interface for delivery of Events and Commands across a message bus.
 
@@ -96,4 +99,3 @@ TODO
 > under the License is distributed on an “AS IS” BASIS, WITHOUT WARRANTIES OR
 > CONDITIONS OF ANY KIND, either express or implied. See the License for the
 > specific language governing permissions and limitations under the License.
-
