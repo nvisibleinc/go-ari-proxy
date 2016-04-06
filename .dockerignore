@@ -1,0 +1,6 @@
+docs
+.git
+.gitignore
+.travis.yml
+config.json
+Dockerfile
