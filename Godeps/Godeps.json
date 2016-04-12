@@ -1,0 +1,29 @@
+{
+	"ImportPath": "github.com/nvisibleinc/go-ari-proxy",
+	"GoVersion": "go1.5",
+	"GodepVersion": "v62",
+	"Deps": [
+		{
+			"ImportPath": "github.com/apcera/nats",
+			"Comment": "v1.1.6-104-gb56f3f1",
+			"Rev": "b56f3f1602aac8a38427da8e7d7d93159f8f0b7c"
+		},
+		{
+			"ImportPath": "github.com/nats-io/nats/encoders/builtin",
+			"Comment": "v1.1.6-104-gb56f3f1",
+			"Rev": "b56f3f1602aac8a38427da8e7d7d93159f8f0b7c"
+		},
+		{
+			"ImportPath": "github.com/nvisibleinc/go-ari-library",
+			"Rev": "8d54a15dc2a4620195d7e8e74720919f754e1977"
+		},
+		{
+			"ImportPath": "github.com/streadway/amqp",
+			"Rev": "b4f3ceab0337f013208d31348b578d83c0064744"
+		},
+		{
+			"ImportPath": "golang.org/x/net/websocket",
+			"Rev": "7f88271ea9913b72aca44fa7fc8af919eacc17ce"
+		}
+	]
+}
