@@ -2,6 +2,8 @@ go-ari-proxy
 ============
 
 [![Build Status](https://travis-ci.org/nvisibleinc/go-ari-proxy.svg?branch=master)](https://travis-ci.org/nvisibleinc/go-ari-proxy)
+[![Go Report
+Card](https://goreportcard.com/badge/github.com/nvisibleinc/go-ari-proxy)](https://goreportcard.com/report/github.com/nvisibleinc/go-ari-proxy)
 
 An implementation of the [go-ari-library][1] used to connect to the Asterisk
 REST Interface for delivery of Events and Commands across a message bus.

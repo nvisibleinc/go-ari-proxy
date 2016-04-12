@@ -1,9 +1,27 @@
 language: go
+sudo: false
 
 go:
-  - 1.4
   - 1.5
-  - tip
+  - 1.6
 
 before_script:
   - go vet ./...
+
+install:
+  - go get -t -v ./...
+  - go get github.com/golang/lint/golint
+  - go get github.com/opennota/check/cmd/aligncheck
+  - go get github.com/opennota/check/cmd/structcheck
+  - go get github.com/opennota/check/cmd/varcheck
+  - go get github.com/mvdan/interfacer/cmd/interfacer
+  # Add Godeps dependencies to GOPATH and PATH
+  - export GOPATH="${TRAVIS_BUILD_DIR}/Godeps/_workspace:$GOPATH"
+  - export PATH="${TRAVIS_BUILD_DIR}/Godeps/_workspace/bin:$PATH"
+
+script:
+  - golint ./...
+  - aligncheck ./...
+  - structcheck ./...
+  - varcheck ./...
+  - interfacer ./...
