@@ -36,14 +36,13 @@ Add a `config.json` file to your directory you're running the application from.
 
 ```js
 {
-    "origin":
-    "foo",
+    "origin": "http://foo.com",
     "server_id": "bar",
     "applications": [
         "foo"
     ],
-    "websocket_url": "http://localhost:8080",
-    "stasis_url": "http://localhost:8080",
+    "websocket_url": "ws://localhost:8080/ari/events",
+    "stasis_url": "http://localhost:8080/ari",
     "ws_user": "user",
     "ws_password": "secret",
     "message_bus": "RABBITMQ|NATS",
@@ -54,7 +53,7 @@ Add a `config.json` file to your directory you're running the application from.
 }
 ```
 
-* **origin** - Connection to ARI events
+* **origin** - A HTTP URI of the Origin (it would normally be sent from a browser)
 * **server_id** - Unique server identity
 * **applications** - Array of ARI applications to listen for
 * **websocket_url** - Websocket URL to connect to
